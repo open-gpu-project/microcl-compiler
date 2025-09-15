@@ -1,16 +1,42 @@
 {
+   /***************************************************************************/
+   // General editor settings
+   /***************************************************************************/
    "files.associations": {
-      "*.inc": "cpp"
+      "*.inc": "cpp",
+      "*.cir": "mlir"
    },
    "editor.rulers": [
       80,
       100
    ],
+   "files.exclude": {
+      "**/.git": true,
+      "**/.svn": true,
+      "**/.hg": true,
+      "**/.DS_Store": true,
+      "**/Thumbs.db": true,
+      "**/llvm-project/[.,a,d-k,n-z]*": true,
+      "**/llvm-project/{bo,co,cr,lld,lib}*": true,
+      "**/llvm-project/{llvm-libgcc,clang-tools-extra}*": true
+   },
    "editor.indentSize": "tabSize",
    "editor.tabSize": 3,
    "editor.detectIndentation": false,
    "git.enableCommitSigning": false,
    "search.quickOpen.includeHistory": false,
+   /***************************************************************************/
+   // Terminal settings
+   /***************************************************************************/
+   "terminal.integrated.env.osx": {
+      "MICROCL_BIN": "${workspaceFolder}/build",
+      "LLVM_BIN": "${workspaceFolder}/llvm-project/build/bin",
+      "UCL_CLANG": "${workspaceFolder}/llvm-project/build/bin/clang++ -fplugin=${workspaceFolder}/build/microcl-plugin.dylib",
+      "UCL_OPT": "${workspaceFolder}/llvm-project/build/bin/opt --load-pass-plugin=${workspaceFolder}/build/opt-plugin.dylib"
+   },
+   /***************************************************************************/
+   // Language specific editor settings
+   /***************************************************************************/
    "python.analysis.typeCheckingMode": "standard",
    "[python]": {
       "editor.tabSize": 4,
@@ -28,8 +54,11 @@
          "other": "off"
       }
    },
-   // Disable Microsoft C++ extension autocomplete + code analysis
-   // We only need it for docs & syntax highlighting. LSP is clangd.
+   /***************************************************************************/
+   // C/C++ extension configuration
+   // - Disable Microsoft C++ extension autocomplete + code analysis
+   //   We only need it for docs & syntax highlighting. LSP is clangd.
+   /***************************************************************************/
    "C_Cpp.codeAnalysis.runAutomatically": false,
    "C_Cpp.codeAnalysis.clangTidy.enabled": true,
    "C_Cpp.codeAnalysis.clangTidy.useBuildPath": true,
@@ -40,8 +69,11 @@
    "C_Cpp.errorSquiggles": "disabled",
    "C_Cpp.autocomplete": "disabled",
    "C_Cpp.autoAddFileAssociations": false,
-   // LSP clangd configuration. Disable hover provider as MS C++
-   // renders docs much prettier <3
+   /***************************************************************************/
+   // clangd configuration
+   // - LSP clangd configuration. Disable hover provider as MS C++
+   //   renders docs much prettier <3
+   /***************************************************************************/
    "clangd.arguments": [
       "--compile-commands-dir=${workspaceFolder}/build",
       "--completion-style=detailed",
@@ -50,6 +82,9 @@
    "clangd.detectExtensionConflicts": false,
    "clangd.serverCompletionRanking": true,
    "clangd.enableHover": false,
+   /***************************************************************************/
+   // MLIR configuration
+   /***************************************************************************/
    "mlir.tablegen_compilation_databases": [
       "${workspaceFolder}/build/tablegen_compile_commands.yml"
    ],

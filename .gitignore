@@ -1,5 +1,18 @@
+# Build and IDE files
 .cache/
 build/
+
+# MacOS system files
 .DS_Store
+
+# General compiled artifacts
 *.ll
+*.cir
+*.mlir
+*.bc
+*.dot
+*.log
+
+# CMake files
+*.dependers
 CMakeUserPresets.json

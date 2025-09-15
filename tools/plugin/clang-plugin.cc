@@ -1,9 +1,17 @@
+#include <filesystem>
 #include <memory>
 #include <mutex>
 #include <string>
 #include <vector>
 
+namespace mlir {
+   class ModuleOp;
+}
+
 #include "clang/AST/ASTConsumer.h"
+#include "clang/Basic/DiagnosticFrontend.h"
+#include "clang/CIR/CIRGenerator.h"
+#include "clang/CIR/CIRToCIRPasses.h"
 #include "clang/CIR/FrontendAction/CIRGenAction.h"
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Frontend/FrontendAction.h"
@@ -11,6 +19,8 @@
 #include "common.h"
 #include "llvm/Passes/PassPlugin.h"
 #include "microcl/plugin/Attributes.h"
+#include "mlir/IR/BuiltinOps.h"
+#include "mlir/IR/MLIRContext.h"
 
 #if defined(__linux__) || defined(__APPLE__)
 #include <dlfcn.h> // dladdr
@@ -109,18 +119,92 @@ namespace microcl {
 
 class microcl::MainConsumer : public ASTConsumer {
 public:
-   explicit MainConsumer(CompilerInstance &CI) : CI(CI) {}
+   explicit MainConsumer(CompilerInstance &CI, std::unique_ptr<raw_pwrite_stream> OS)
+         : CI(CI),
+           OutputStream(std::move(OS)),
+           FS(&CI.getVirtualFileSystem()),
+           Gen(std::make_unique<cir::CIRGenerator>(CI.getDiagnostics(), std::move(FS),
+                                                   CI.getCodeGenOpts())),
+           FEOptions(CI.getFrontendOpts()),
+           CGO(CI.getCodeGenOpts()) {}
 
-   void HandleTranslationUnit(ASTContext &Context) override { (void)CI; }
+   void Initialize(ASTContext &Ctx) override {
+      assert(!Context && "initialized multiple times");
+      Context = &Ctx;
+      Gen->Initialize(Ctx);
+   }
+
+   bool HandleTopLevelDecl(DeclGroupRef D) override {
+      Gen->HandleTopLevelDecl(D);
+      return true;
+   }
+
+   void HandleCXXStaticMemberVarInstantiation(clang::VarDecl *VD) override {
+      Gen->HandleCXXStaticMemberVarInstantiation(VD);
+   }
+
+   void HandleInlineFunctionDefinition(FunctionDecl *D) override {
+      Gen->HandleInlineFunctionDefinition(D);
+   }
+
+   void HandleTranslationUnit(ASTContext &C) override {
+      using namespace cir;
+
+      // Generate CIR for the entire translation unit.
+      Gen->HandleTranslationUnit(C);
+
+      // Verify the generated CIR module before running any CIR passes.
+      if (!Gen->verifyModule()) {
+         llvm::report_fatal_error(
+               "CIR codegen: module verification error before running CIR passes");
+         return;
+      }
+
+      // Setup and run CIR pipeline.
+      mlir::ModuleOp MlirModule = Gen->getModule();
+
+      // Output the final CIR module.
+      if (OutputStream && MlirModule) {
+         mlir::OpPrintingFlags Flags;
+         Flags.enableDebugInfo(/*enable=*/true, /*prettyForm=*/false);
+         MlirModule->print(*OutputStream, Flags);
+      }
+   }
+
+   void HandleTagDeclDefinition(TagDecl *D) override {
+      PrettyStackTraceDecl CrashInfo(D, SourceLocation(), Context->getSourceManager(),
+                                     "CIR generation of declaration");
+      Gen->HandleTagDeclDefinition(D);
+   }
+
+   void HandleTagDeclRequiredDefinition(const TagDecl *D) override {
+      Gen->HandleTagDeclRequiredDefinition(D);
+   }
+
+   void CompleteTentativeDefinition(VarDecl *D) override { Gen->CompleteTentativeDefinition(D); }
+
+   void HandleVTable(CXXRecordDecl *RD) override { Gen->HandleVTable(RD); }
 
 private:
    CompilerInstance &CI;
+   std::unique_ptr<raw_pwrite_stream> OutputStream;
+   ASTContext *Context{nullptr};
+   IntrusiveRefCntPtr<llvm::vfs::FileSystem> FS;
+   std::unique_ptr<cir::CIRGenerator> Gen;
+   const FrontendOptions &FEOptions;
+   CodeGenOptions &CGO;
 };
 
 class microcl::MainAction : public PluginASTAction {
 protected:
-   std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &CI, StringRef) override {
-      return std::make_unique<microcl::MainConsumer>(CI);
+   std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &CI, StringRef InFile) override {
+      std::filesystem::path OutPath{InFile.str()};
+      OutPath.replace_extension("mlir");
+      // llvm::errs() << "Writing CIR output to '" << OutPath.filename() << "\n";
+      std::error_code EC;
+      // auto OS = std::make_unique<llvm::raw_fd_ostream>(OutPath.filename().string(), EC, llvm::sys::fs::OF_None);
+      auto OS = CI.createOutputFile(OutPath.filename().string(), false, false, false);
+      return std::make_unique<MainConsumer>(CI, std::move(OS));
    }
 
    bool ParseArgs(const CompilerInstance &CI, const std::vector<std::string> &Args) override {
@@ -137,7 +221,7 @@ protected:
             // Disable all our LLVM passes (do not inject them into the pipeline)
             g_DisableLLVMPasses = true;
          } else {
-            llvm::errs() << "warning: unknown option '" << arg << "' for microCL plugin\n";
+            llvm::errs() << "warning: ignoring unknown option '" << arg << "' for microCL plugin\n";
             // continue processing other args
          }
       }
@@ -172,7 +256,5 @@ static ParsedAttrInfoRegistry::Add<microcl::plugin::DriverDeviceAttrInfo> ATTR1{
 //===----------------------------------------------------------------------===//
 
 extern "C" LLVM_ATTRIBUTE_WEAK ::llvm::PassPluginLibraryInfo llvmGetPassPluginInfo() {
-   return microcl::plugin::GetPassPluginInfo({
-      .InjectOurPasses = !g_DisableLLVMPasses
-   });
+   return microcl::plugin::GetPassPluginInfo({.InjectOurPasses = !g_DisableLLVMPasses});
 }

@@ -9,7 +9,7 @@ namespace microcl::plugin {
     * Struct to hold global options for the LLVM passes in this plugin.
     */
    struct GlobalLLVMOpts {
-      bool InjectOurPasses = true;
+      bool InjectOurPasses = false; /// Whether to inject our passes into the pipeline automatically.
    };
 
    llvm::PassPluginLibraryInfo GetPassPluginInfo(GlobalLLVMOpts opts = {});

@@ -15,7 +15,25 @@ The build targets (found in the CMake build directory) is as follows:
 
 ## Usage
 
-First, setup (in bash syntax)
+Your VSCode environment should already have the following environment variables declared (echo just to make sure):
+
+```bash
+# Check to make sure VSCode has set it up properly
+echo $MICROCL_BIN
+echo $LLVM_BIN
+echo $UCL_CLANG
+echo $UCL_OPT
+
+# Create your aliases
+alias ucl_clang $UCL_CLANG
+alias ucl_opt $UCL_OPT
+
+# Double check if it works
+ucl_clang --version
+ucl_opt --version
+```
+
+If the previous step doesn't work, setup (in bash syntax)
 
 ```bash
 export LLVM_BIN "/path/to/llvm/build/bin"

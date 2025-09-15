@@ -1,0 +1,14 @@
+{
+   "version": 2,
+   "configurePresets": [
+      {
+         "name": "llvm-template-preset",
+         "generator": "Ninja",
+         "binaryDir": "${sourceDir}/build",
+         "cacheVariables": {
+            "LLVM_MAIN_SRC_DIR": "${sourceDir}/llvm-project",
+            "LLVM_BUILD_DIR": "${sourceDir}/llvm-project/build"
+         }
+      }
+   ]
+}

@@ -8,7 +8,7 @@ add_llvm_library(
     PLUGIN_TOOL
     clang
 )
-target_link_libraries(microcl-plugin PRIVATE microcl-lib)
+target_link_libraries(microcl-plugin PRIVATE microcl-lib clangCIR)
 
 add_llvm_library(
     opt-plugin
@@ -21,4 +21,3 @@ add_llvm_library(
     opt
 )
 target_link_libraries(opt-plugin PRIVATE microcl-lib)
-
