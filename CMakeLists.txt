@@ -69,6 +69,10 @@ add_subdirectory(
     ${LLVM_MAIN_SRC_DIR}/clang/lib/CIR/Interfaces
     ${CMAKE_BINARY_DIR}/external/clang/lib/CIR/Interfaces
 )
+add_subdirectory(
+    ${LLVM_MAIN_SRC_DIR}/clang/lib/CIR/FrontendAction
+    ${CMAKE_BINARY_DIR}/external/clang/lib/CIR/FrontendAction
+)
 
 # Include our plugin sources
 include(${CMAKE_CURRENT_LIST_DIR}/lib/build.cmake)

@@ -4,14 +4,12 @@
 #include <vector>
 
 #include "clang/AST/ASTConsumer.h"
+#include "clang/CIR/FrontendAction/CIRGenAction.h"
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Frontend/FrontendAction.h"
 #include "clang/Frontend/FrontendPluginRegistry.h"
-#include "llvm/IR/PassManager.h"
-#include "llvm/Passes/PassBuilder.h"
+#include "common.h"
 #include "llvm/Passes/PassPlugin.h"
-#include "microcl/llvm/Transforms/PrintAnnotatedFunctions.h"
-#include "microcl/llvm/Transforms/RewriteRuntimeFunctions.h"
 #include "microcl/plugin/Attributes.h"
 
 #if defined(__linux__) || defined(__APPLE__)
@@ -23,6 +21,12 @@
 #include <stringapiset.h>
 #include <windows.h>
 #endif
+
+//===----------------------------------------------------------------------===//
+// Global state for this plugin DSO
+//===----------------------------------------------------------------------===//
+
+static bool g_DisableLLVMPasses = false;
 
 //===----------------------------------------------------------------------===//
 // Helper function to get the path of this plugin DSO
@@ -123,6 +127,21 @@ protected:
       // Tell the backend to load this plugin as a pass plugin
       auto &CO = const_cast<CompilerInstance &>(CI).getCodeGenOpts();
       CO.PassPlugins.push_back(getPluginPathFromThisDSO());
+
+      // Now parse the command line args
+      for (const auto &arg : Args) {
+         if (arg == "help") {
+            llvm::errs() << "Not implemented\n";
+            return false;
+         } else if (arg == "disable-llvm-passes") {
+            // Disable all our LLVM passes (do not inject them into the pipeline)
+            g_DisableLLVMPasses = true;
+         } else {
+            llvm::errs() << "warning: unknown option '" << arg << "' for microCL plugin\n";
+            // continue processing other args
+         }
+      }
+
       return true;
    }
 
@@ -152,32 +171,8 @@ static ParsedAttrInfoRegistry::Add<microcl::plugin::DriverDeviceAttrInfo> ATTR1{
 // LLVM pass plugin registration
 //===----------------------------------------------------------------------===//
 
-static bool ModulePipelineParsingCallback(StringRef Name, llvm::ModulePassManager &PM,
-                                          ArrayRef<llvm::PassBuilder::PipelineElement>) {
-   using namespace llvm;
-   using namespace microcl::llvm;
-   if (Name == "microcl-rewrite-runtime-functions") {
-      PM.addPass(RewriteRuntimeFunctionsPass{});
-   } else if (Name == "microcl-print-annotated-functions") {
-      PM.addPass(PrintAnnotatedFunctionsPass{});
-   } else {
-      return false;
-   }
-   return true;
-}
-
-static void PipelineStartEPCallback(llvm::ModulePassManager &MPM, llvm::OptimizationLevel Level) {
-   using namespace microcl::llvm;
-
-   // Inject passes here before the standard optimization pipelines
-   MPM.addPass(RewriteRuntimeFunctionsPass{});
-}
-
 extern "C" LLVM_ATTRIBUTE_WEAK ::llvm::PassPluginLibraryInfo llvmGetPassPluginInfo() {
-   return {LLVM_PLUGIN_API_VERSION, "microcl", "0.1", [](llvm::PassBuilder &PB) {
-              // 1. Textual pipeline name -> pass mapping
-              PB.registerPipelineParsingCallback(ModulePipelineParsingCallback);
-              // 2. Auto-inject near the start of the default pipeline
-              PB.registerPipelineStartEPCallback(PipelineStartEPCallback);
-           }};
+   return microcl::plugin::GetPassPluginInfo({
+      .InjectOurPasses = !g_DisableLLVMPasses
+   });
 }

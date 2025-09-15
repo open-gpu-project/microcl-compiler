@@ -1,0 +1,19 @@
+{
+   "version": 2,
+   "configurePresets": [
+      {
+         "name": "default-debug",
+         "displayName": "User Debug Config",
+         "inherits": [],
+         "generator": "Ninja",
+         "binaryDir": "${sourceDir}/build",
+         "cacheVariables": {
+            "CMAKE_BUILD_TYPE": "Debug",
+            "LLVM_MAIN_SRC_DIR": "/path/to/llvm-project",
+            "LLVM_BUILD_DIR": "/path/to/llvm-project/build",
+            "CMAKE_C_COMPILER": "/path/to/clang",
+            "CMAKE_CXX_COMPILER": "/path/to/clang++"
+         }
+      }
+   ]
+}

@@ -23,7 +23,7 @@ PreservedAnalyses RewriteRuntimeFunctionsPass::run(Module &M, ModuleAnalysisMana
       }
    }
 
-   return PreservedAnalyses::none();
+   return PreservedAnalyses::all();
 }
 
 void RewriteRuntimeFunctionsPass::handleFunctionAnnotation(Function &F, std::string_view Annot) {

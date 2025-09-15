@@ -3,6 +3,7 @@ add_library(
 
    STATIC
    ${CMAKE_CURRENT_LIST_DIR}/llvm/Transforms/RewriteRuntimeFunctions.cc
+   ${CMAKE_CURRENT_LIST_DIR}/llvm/Transforms/PrintAnnotatedFunctions.cc
    ${CMAKE_CURRENT_LIST_DIR}/plugin/DeviceAttributes.cc
 )
 

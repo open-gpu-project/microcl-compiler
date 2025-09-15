@@ -11,6 +11,7 @@ using namespace llvm;
 using microcl::llvm::PrintAnnotatedFunctionsPass;
 
 PreservedAnalyses PrintAnnotatedFunctionsPass::run(Module &M, ModuleAnalysisManager &AM) {
+   llvm::errs() << "=== Printing Annotated functions ===\n";
    if (auto *GA = M.getNamedGlobal("llvm.global.annotations")) {
       if (auto *CA = dyn_cast<ConstantArray>(GA->getOperand(0))) {
          for (unsigned i = 0; i < CA->getNumOperands(); ++i) {
@@ -19,6 +20,8 @@ PreservedAnalyses PrintAnnotatedFunctionsPass::run(Module &M, ModuleAnalysisMana
             auto *AnnoGV = cast<GlobalVariable>(CS->getOperand(1)->stripPointerCasts());
             auto *Anno = cast<ConstantDataArray>(AnnoGV->getInitializer());
             auto Name = Anno->getAsCString().data();
+            if(!Name) continue;
+            if(!F->hasName()) continue;
             if (isAnnot<plugin::GpuDeviceAttrInfo>(Name)) {
                llvm::errs() << "[[GPU]]" << " " << F->getName() << "\n";
             } else if (isAnnot<plugin::DriverDeviceAttrInfo>(Name)) {
